@@ -873,7 +873,7 @@ function App() {
         <div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-4 lg:px-10">
           <div className="flex items-center gap-3">
             <div className="brand-mark"><Coins size={25} strokeWidth={2.2} /></div>
-            <div><div className="brand-name">2026 80歲少女之好運選號</div><div className="brand-subtitle">福氣加持 ‧ 喜迎頭獎</div></div>
+            <div><div className="brand-name">80歲少女之好運選號</div><div className="brand-subtitle">福氣加持 ‧ 喜迎頭獎</div></div>
           </div>
           <nav className="lotto-tabs">
             {(Object.keys(LOTTERY_CONFIGS) as LotteryType[]).map((type) => (
