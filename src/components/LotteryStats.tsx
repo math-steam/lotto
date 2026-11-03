@@ -1,11 +1,10 @@
 import { useMemo } from 'react';
-import { BarChart3, Flame, Hash, Layers, Snowflake, Sparkles, TrendingUp } from 'lucide-react';
+import { BarChart3, Flame, Hash, Layers, Snowflake, TrendingUp } from 'lucide-react';
 import type { Draw, LotteryConfig } from '@/App';
 
 type LotteryStatsProps = {
   historyData: Draw[];
   config: LotteryConfig;
-  onApplyHot: (numbers: number[]) => void;
   currentNumbers: number[];
 };
 
@@ -54,7 +53,7 @@ function describePattern(sortedCounts: number[]): string {
   return parts.join('、');
 }
 
-export default function LotteryStats({ historyData, config, onApplyHot, currentNumbers }: LotteryStatsProps) {
+export default function LotteryStats({ historyData, config, currentNumbers }: LotteryStatsProps) {
   const stats = useMemo(() => {
     const freq = computeFrequency(historyData, config.mainMax);
     const allEntries: NumberStat[] = Array.from(freq.entries())
@@ -139,11 +138,6 @@ export default function LotteryStats({ historyData, config, onApplyHot, currentN
 
   const currentSum = currentNumbers.reduce((total, number) => total + number, 0);
   const inGoldenRange = currentSum >= config.sumDefault[0] && currentSum <= config.sumDefault[1];
-
-  const handleApplyHot = () => {
-    const hotNumbers = stats.hotTop6.map((item) => item.number).sort((a, b) => a - b);
-    onApplyHot(hotNumbers);
-  };
 
   const pad = (n: number) => n.toString().padStart(2, '0');
 
@@ -260,7 +254,7 @@ export default function LotteryStats({ historyData, config, onApplyHot, currentN
         </div>
 
         <div className="stats-sub-card stats-zone-card">
-          <div className="stats-sub-header"><Layers size={16} className="stats-zone-icon" /><h3>近 30 期區間型態熱門排名</h3><button className="stats-apply-mini" onClick={handleApplyHot}><Sparkles size={14} />帶入熱門號</button></div>
+          <div className="stats-sub-header"><Layers size={16} className="stats-zone-icon" /><h3>近 30 期區間型態熱門排名</h3></div>
           <div className="stats-zone-hint">
             {stats.zoneBounds.map((zone, index) => (
               <span key={index} className="stats-zone-tag" style={{ color: ZONE_COLORS[index] }}>

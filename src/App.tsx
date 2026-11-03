@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Award, Check, ChevronDown, Coffee, Coins, Copy, Download, History, Heart, RefreshCw, Sparkles, Target, Timer, Trash2, Trophy, X, Zap } from 'lucide-react';
+import { Award, Check, ChevronDown, Coffee, Coins, Copy, Download, Flame, History, Heart, RefreshCw, Sparkles, Target, Timer, Trash2, Trophy, X, Zap } from 'lucide-react';
 import LotteryStats from '@/components/LotteryStats';
 
 type Ratio = string;
@@ -837,6 +837,20 @@ function App() {
     setRecommendation(`已帶入近 30 期最熱門的 ${numbers.length} 個號碼，可點擊「生成選號」重新組合`);
   };
 
+  const hotTopNumbers = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (let n = 1; n <= config.mainMax; n += 1) counts.set(n, 0);
+    historyData.forEach((draw) => draw.numbers.forEach((num) => counts.set(num, (counts.get(num) ?? 0) + 1)));
+    return Array.from(counts.entries())
+      .map(([number, count]) => ({ number, count }))
+      .sort((a, b) => b.count - a.count || a.number - b.number)
+      .slice(0, config.mainCount)
+      .map((item) => item.number)
+      .sort((a, b) => a - b);
+  }, [historyData, config.mainMax, config.mainCount]);
+
+  const handleApplyHot = () => applyHotNumbers(hotTopNumbers);
+
   const visibleHistory = showAll ? historyData : historyData.slice(0, 8);
   const resultSum = result.reduce((total, number) => total + number, 0);
   const resultOdd = result.filter((number) => number % 2 === 1).length;
@@ -930,7 +944,7 @@ function App() {
           <section className="generator-column">
             <div className="generator-intro"><span className="eyebrow">YOUR LUCKY NUMBERS</span><h2>準備好迎接好運了嗎？</h2><p>依照左側條件，為你挑出專屬幸運組合</p></div>
             <div className="strategy-panel"><div className="strategy-title"><div><span className="eyebrow">SMART MODE</span><h3>智慧選號模式</h3></div><Sparkles size={18} /></div><div className="strategy-tabs">{strategyOptions.map((option) => <button key={option.id} onClick={() => setStrategy(option.id)} className={strategy === option.id ? 'selected' : ''}><span className="strategy-icon">{option.icon}</span><span className="strategy-label">{option.label}</span><small>{option.description}</small></button>)}</div></div>
-            <button className="generate-button" onClick={generateNumbers}><span className="button-spark">✦</span>生成選號<span className="button-spark">✦</span></button>
+            <div className="generate-row"><button className="generate-button" onClick={generateNumbers}><span className="button-spark">✦</span>生成選號<span className="button-spark">✦</span></button><button className="hot-apply-btn" onClick={handleApplyHot}><Flame size={18} />一鍵帶入熱門號</button></div>
             <div className="result-card panel-frame rounded-2xl p-6 sm:p-8"><div className="result-header"><div><span className="eyebrow">LUCKY PICK · 01</span><h3>你的幸運號碼</h3></div><button className="copy-button" onClick={copyResult}>{copied ? <Check size={18} /> : <Copy size={18} />}<span>{copied ? '已複製' : '複製號碼'}</span></button></div>
               <div className="balls">
                 {result.map((number) => <span className="lotto-ball" key={number}>{pad(number)}</span>)}
@@ -951,7 +965,7 @@ function App() {
           <section className="history-card panel-frame rounded-2xl p-5 sm:p-6"><div className="history-heading"><div><span className="eyebrow">LATEST RESULTS</span><h2>{config.label} 近期開獎紀錄</h2></div><button className={`refresh-button ${checking ? 'spinning' : ''}`} onClick={checkLatest}><RefreshCw size={16} />{checking ? '檢查中' : '檢查最新開獎'}</button></div>{checked && <div className={`checked-message ${isOffline ? 'offline-message' : ''}`}><Check size={15} />{isOffline ? '目前為離線歷史資料' : '已載入最新歷史資料'}</div>}<div className="history-table-wrap"><table><thead><tr><th>期別</th><th>日期</th><th>開獎號碼</th>{config.hasSpecial && <th>{config.specialLabel}</th>}</tr></thead><tbody>{visibleHistory.map((draw) => <tr key={draw.period}><td className="period">{draw.period}</td><td>{draw.date.slice(5)}</td><td><div className="mini-balls">{draw.numbers.map((number) => <span key={number}>{pad(number)}</span>)}</div></td>{config.hasSpecial && <td><span className="special-ball">{pad(draw.special)}</span></td>}</tr>)}</tbody></table></div><button className="show-more" onClick={() => setShowAll((current) => !current)}>{showAll ? '收起紀錄' : `查看完整 ${historyData.length} 期`}<ChevronDown size={16} className={showAll ? 'rotate-180' : ''} /></button></section>
         </div>
 
-        <LotteryStats historyData={historyData} config={config} onApplyHot={applyHotNumbers} currentNumbers={result} />
+        <LotteryStats historyData={historyData} config={config} currentNumbers={result} />
           </>
         ) : (
           <section className="records-page">
