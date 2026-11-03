@@ -1,0 +1,2 @@
+[functions.lottery-results]
+verify_jwt = false
