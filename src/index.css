@@ -233,6 +233,8 @@ button { cursor: pointer; }
 .stats-ratio-pct { color:#fff3cf; font-size:13px; font-weight:900; flex:none; width:40px; text-align:right; font-variant-numeric:tabular-nums; }
 .stats-apply-btn { display:flex; align-items:center; justify-content:center; gap:9px; width:100%; margin-top:20px; padding:14px; border:1px solid #f0c466; border-radius:12px; color:#ffe6a1; background:linear-gradient(135deg,rgba(245,202,104,.12),rgba(230,178,78,.08)); font-size:15px; font-weight:900; letter-spacing:.06em; transition:.2s; cursor:pointer; }
 .stats-apply-btn:hover { background:linear-gradient(135deg,rgba(245,202,104,.25),rgba(230,178,78,.18)); transform:translateY(-1px); box-shadow:0 5px 16px rgba(226,165,66,.2); color:#fff3cf; }
+.stats-apply-mini { display:flex; align-items:center; gap:5px; margin-left:auto; padding:6px 12px; border:1px solid rgba(245,202,104,.45); border-radius:8px; color:#ffe6a1; background:linear-gradient(135deg,rgba(245,202,104,.14),rgba(230,178,78,.08)); font-size:12px; font-weight:800; letter-spacing:.03em; transition:.2s; cursor:pointer; white-space:nowrap; }
+.stats-apply-mini:hover { background:linear-gradient(135deg,rgba(245,202,104,.28),rgba(230,178,78,.2)); color:#fff3cf; transform:translateY(-1px); box-shadow:0 3px 10px rgba(226,165,66,.2); border-color:rgba(255,228,154,.7); }
 
 /* Stats — Second Row (Sum + Zone) */
 .stats-grid-second { margin-top:16px; grid-template-columns:1fr 1fr; }

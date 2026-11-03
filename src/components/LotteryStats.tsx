@@ -260,7 +260,7 @@ export default function LotteryStats({ historyData, config, onApplyHot, currentN
         </div>
 
         <div className="stats-sub-card stats-zone-card">
-          <div className="stats-sub-header"><Layers size={16} className="stats-zone-icon" /><h3>近 30 期區間型態熱門排名</h3></div>
+          <div className="stats-sub-header"><Layers size={16} className="stats-zone-icon" /><h3>近 30 期區間型態熱門排名</h3><button className="stats-apply-mini" onClick={handleApplyHot}><Sparkles size={14} />帶入熱門號</button></div>
           <div className="stats-zone-hint">
             {stats.zoneBounds.map((zone, index) => (
               <span key={index} className="stats-zone-tag" style={{ color: ZONE_COLORS[index] }}>
@@ -287,10 +287,6 @@ export default function LotteryStats({ historyData, config, onApplyHot, currentN
         </div>
       </div>
 
-      <button className="stats-apply-btn" onClick={handleApplyHot}>
-        <Sparkles size={16} />
-        一鍵帶入熱門號選號
-      </button>
     </section>
   );
 }
