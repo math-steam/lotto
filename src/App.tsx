@@ -1036,7 +1036,7 @@ function App() {
             <h3>請 80 歲少女喝杯咖啡</h3>
             <p>感謝您使用好運選號！<br />如果您覺得實用，一杯咖啡的鼓勵<br />就是 80 歲少女最大的福氣加持 ☕✨</p>
             <a href="https://buymeacoffee.com/mama80" target="_blank" rel="noopener noreferrer" className="coffee-modal-btn">
-              <Heart size={18} /> 前去贊助 Buy Me a Coffee
+              <Heart size={18} /> 前往贊助一杯咖啡
             </a>
             <span className="coffee-modal-hint">點擊後將於新分頁開啟贊助頁面</span>
           </div>
