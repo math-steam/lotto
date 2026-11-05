@@ -1,2 +1,5 @@
 [functions.lottery-results]
 verify_jwt = false
+
+[functions.jackpot]
+verify_jwt = false

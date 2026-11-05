@@ -4,6 +4,10 @@
     "lottery-results": {
       "hasChanged": false,
       "hash": "25bf1dae67f0dbd83dd022a59b8bfcfff9acef14639fb2d8e10062f80ac09035"
+    },
+    "jackpot": {
+      "hasChanged": false,
+      "hash": "22e5334dc2c91d407a0acf934c030676c9a26d123c9d76094557c3158088b75e"
     }
   }
 }
