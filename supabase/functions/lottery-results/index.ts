@@ -31,10 +31,20 @@ type DrawItem = {
   special: number;
 };
 
+type JackpotInfo = {
+  amount: string | null;
+  consecutiveNoWinner: number;
+};
+
 type LotteryResult = {
   lotto649: DrawItem[];
   superlotto: DrawItem[];
   daily539: DrawItem[];
+  jackpots: {
+    lotto649: JackpotInfo;
+    superlotto: JackpotInfo;
+    daily539: JackpotInfo;
+  };
   debug: string[];
 };
 
@@ -139,6 +149,11 @@ const FALLBACK_DRAWS: LotteryResult = {
     { period: "115000237", date: "2026/09/30", numbers: [2, 7, 9, 14, 33], special: 0 },
     { period: "115000236", date: "2026/09/29", numbers: [6, 13, 17, 26, 28], special: 0 },
   ],
+  jackpots: {
+    lotto649: { amount: null, consecutiveNoWinner: 0 },
+    superlotto: { amount: null, consecutiveNoWinner: 0 },
+    daily539: { amount: null, consecutiveNoWinner: 0 },
+  },
   debug: [],
 };
 
@@ -273,6 +288,38 @@ function sortAndLimit(draws: DrawItem[], limit: number): DrawItem[] {
   return draws.sort((a, b) => Number(b.period) - Number(a.period)).slice(0, limit);
 }
 
+function extractJackpot(content: Record<string, unknown>, drawItems: DrawItem[], key: string, debug: string[]): JackpotInfo {
+  const items = content[key];
+  if (!Array.isArray(items) || items.length === 0) {
+    return { amount: null, consecutiveNoWinner: 0 };
+  }
+  const sorted = [...items].sort((a, b) => {
+    const pa = Number((a as Record<string, unknown>)["period"]);
+    const pb = Number((b as Record<string, unknown>)["period"]);
+    return pb - pa;
+  });
+  const latest = sorted[0] as Record<string, unknown>;
+  const prizeAmount = latest["estimatedPrizeAmount"] ?? latest["prizeAmount"] ?? latest["jackpotAmount"];
+  let amountStr: string | null = null;
+  if (typeof prizeAmount === "number" && prizeAmount > 0) {
+    amountStr = `NT$ ${(prizeAmount / 100000000).toFixed(1)} 億`;
+  } else if (typeof prizeAmount === "string" && prizeAmount.trim()) {
+    amountStr = prizeAmount.trim();
+  }
+  let consecutive = 0;
+  for (const item of sorted) {
+    const draw = item as Record<string, unknown>;
+    const winner = draw["winningTicket"] ?? draw["hasWinner"];
+    if (winner === false || winner === "false" || winner === 0 || winner === "N") {
+      consecutive += 1;
+    } else {
+      break;
+    }
+  }
+  debug.push(`[${key}] jackpot: amount=${amountStr}, consecutiveNoWinner=${consecutive}`);
+  return { amount: amountStr, consecutiveNoWinner: consecutive };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -287,10 +334,23 @@ Deno.serve(async (req: Request) => {
       fetchEndpoint("Daily539Result", debug),
     ]);
 
+    const lotto649Draws = lotto649Content && parseLotto649(lotto649Content).length > 0 ? sortAndLimit(parseLotto649(lotto649Content), 30) : FALLBACK_DRAWS.lotto649;
+    const superlottoDraws = superlottoContent && parseSuperlotto(superlottoContent).length > 0 ? sortAndLimit(parseSuperlotto(superlottoContent), 30) : FALLBACK_DRAWS.superlotto;
+    const daily539Draws = daily539Content && parseDaily539(daily539Content).length > 0 ? sortAndLimit(parseDaily539(daily539Content), 30) : FALLBACK_DRAWS.daily539;
+
+    const lotto649Jackpot = lotto649Content ? extractJackpot(lotto649Content, lotto649Draws, "lotto649Res", debug) : { amount: null, consecutiveNoWinner: 0 };
+    const superlottoJackpot = superlottoContent ? extractJackpot(superlottoContent, superlottoDraws, "superLotto638Res", debug) : { amount: null, consecutiveNoWinner: 0 };
+    const daily539Jackpot = daily539Content ? extractJackpot(daily539Content, daily539Draws, "daily539Res", debug) : { amount: null, consecutiveNoWinner: 0 };
+
     const result: LotteryResult = {
-      lotto649: lotto649Content && parseLotto649(lotto649Content).length > 0 ? sortAndLimit(parseLotto649(lotto649Content), 30) : FALLBACK_DRAWS.lotto649,
-      superlotto: superlottoContent && parseSuperlotto(superlottoContent).length > 0 ? sortAndLimit(parseSuperlotto(superlottoContent), 30) : FALLBACK_DRAWS.superlotto,
-      daily539: daily539Content && parseDaily539(daily539Content).length > 0 ? sortAndLimit(parseDaily539(daily539Content), 30) : FALLBACK_DRAWS.daily539,
+      lotto649: lotto649Draws,
+      superlotto: superlottoDraws,
+      daily539: daily539Draws,
+      jackpots: {
+        lotto649: lotto649Jackpot,
+        superlotto: superlottoJackpot,
+        daily539: daily539Jackpot,
+      },
       debug,
     };
 

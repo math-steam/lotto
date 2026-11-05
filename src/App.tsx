@@ -267,15 +267,26 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
 const LOTTERY_API_URL = `${SUPABASE_URL}/functions/v1/lottery-results`;
 
+type JackpotInfo = {
+  amount: string | null;
+  consecutiveNoWinner: number;
+};
+
 type LotteryApiResponse = {
   lotto649: Draw[];
   superlotto: Draw[];
   daily539: Draw[];
+  jackpots?: {
+    lotto649: JackpotInfo;
+    superlotto: JackpotInfo;
+    daily539: JackpotInfo;
+  };
 };
 
 type LotteryCache = {
   data: LotteryApiResponse;
   timestamp: number;
+  jackpots?: LotteryApiResponse['jackpots'];
 };
 
 function isDrawArray(value: unknown): value is Draw[] {
@@ -297,7 +308,7 @@ function loadLotteryCache(): LotteryApiResponse | null {
     if (!cache.data || typeof cache.timestamp !== 'number') return null;
     const data = cache.data as Record<string, unknown>;
     if (isDrawArray(data.lotto649) && isDrawArray(data.superlotto) && isDrawArray(data.daily539)) {
-      return cache.data!;
+      return { ...cache.data!, jackpots: cache.jackpots };
     }
   } catch {
     /* ignore */
@@ -307,7 +318,7 @@ function loadLotteryCache(): LotteryApiResponse | null {
 
 function saveLotteryCache(data: LotteryApiResponse) {
   try {
-    const cache: LotteryCache = { data, timestamp: Date.now() };
+    const cache: LotteryCache = { data, timestamp: Date.now(), jackpots: data.jackpots };
     localStorage.setItem(LOTTERY_CACHE_KEY, JSON.stringify(cache));
   } catch {
     /* storage unavailable or full */
@@ -342,6 +353,7 @@ export async function fetchLatestLottery(): Promise<LotteryApiResponse> {
       lotto649: data.lotto649,
       superlotto: data.superlotto,
       daily539: data.daily539,
+      jackpots: data.jackpots as LotteryApiResponse['jackpots'],
     };
   } catch (err) {
     lastError = err;
@@ -433,15 +445,62 @@ async function fetchLatestLotteryViaBrowserProxy(): Promise<LotteryApiResponse> 
   return { lotto649, superlotto, daily539 };
 }
 
+function extractBrowserJackpot(content: Record<string, unknown> | null, key: string): JackpotInfo {
+  if (!content) return { amount: null, consecutiveNoWinner: 0 };
+  const items = content[key];
+  if (!Array.isArray(items) || items.length === 0) return { amount: null, consecutiveNoWinner: 0 };
+  const sorted = [...items].sort((a, b) => {
+    const pa = Number((a as Record<string, unknown>)['period']);
+    const pb = Number((b as Record<string, unknown>)['period']);
+    return pb - pa;
+  });
+  const latest = sorted[0] as Record<string, unknown>;
+  const prizeAmount = latest['estimatedPrizeAmount'] ?? latest['prizeAmount'] ?? latest['jackpotAmount'];
+  let amountStr: string | null = null;
+  if (typeof prizeAmount === 'number' && prizeAmount > 0) {
+    amountStr = `NT$ ${(prizeAmount / 100000000).toFixed(1)} 億`;
+  } else if (typeof prizeAmount === 'string' && prizeAmount.trim()) {
+    amountStr = prizeAmount.trim();
+  }
+  let consecutive = 0;
+  for (const item of sorted) {
+    const draw = item as Record<string, unknown>;
+    const winner = draw['winningTicket'] ?? draw['hasWinner'];
+    if (winner === false || winner === 'false' || winner === 0 || winner === 'N') {
+      consecutive += 1;
+    } else {
+      break;
+    }
+  }
+  return { amount: amountStr, consecutiveNoWinner: consecutive };
+}
+
 function sortAndLimitDraws(draws: Draw[], limit: number): Draw[] {
   return [...draws].sort((a, b) => Number(b.period) - Number(a.period)).slice(0, limit);
 }
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
+const FALLBACK_JACKPOT_BASE: Record<LotteryType, number> = {
+  lotto649: 1.5,
+  superlotto: 1.2,
+  daily539: 0.08,
+};
+
+function computeJackpotLabel(type: LotteryType, jackpot: JackpotInfo | undefined, draws: Draw[]): string {
+  if (jackpot?.amount) return jackpot.amount;
+  const consecutive = jackpot?.consecutiveNoWinner ?? 0;
+  const base = FALLBACK_JACKPOT_BASE[type];
+  if (type === 'daily539') {
+    return `NT$ ${Math.round(base * 10000)} 萬起`;
+  }
+  const estimated = base + consecutive * 0.3;
+  return `NT$ ${estimated.toFixed(1)} 億起`;
+}
+
 const ESTIMATED_JACKPOT: Record<LotteryType, string> = {
-  lotto649: 'NT$ 1.5 億',
-  superlotto: 'NT$ 1.2 億',
-  daily539: 'NT$ 800 萬',
+  lotto649: 'NT$ 1.5 億起',
+  superlotto: 'NT$ 1.2 億起',
+  daily539: 'NT$ 800 萬起',
 };
 
 type NextDrawInfo = {
@@ -641,12 +700,43 @@ function App() {
   const [reportMessage, setReportMessage] = useState('');
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(0);
+  const [jackpots, setJackpots] = useState<Record<LotteryType, JackpotInfo>>({
+    lotto649: { amount: null, consecutiveNoWinner: 0 },
+    superlotto: { amount: null, consecutiveNoWinner: 0 },
+    daily539: { amount: null, consecutiveNoWinner: 0 },
+  });
 
   const refreshHistory = async (type: LotteryType, markChecked: boolean) => {
-    const latest = await fetchHistoryByType(type);
-    if (latest.draws.length > 0) {
-      setHistoryData(latest.draws);
-      setIsOffline(latest.offline);
+    try {
+      const latest = await fetchLatestLottery();
+      saveLotteryCache(latest);
+      if (latest[type].length > 0) {
+        setHistoryData(latest[type]);
+        setIsOffline(false);
+      }
+      if (latest.jackpots) {
+        setJackpots({
+          lotto649: latest.jackpots.lotto649,
+          superlotto: latest.jackpots.superlotto,
+          daily539: latest.jackpots.daily539,
+        });
+      }
+    } catch {
+      const cached = loadLotteryCache();
+      if (cached && cached[type].length > 0) {
+        setHistoryData(cached[type]);
+        setIsOffline(true);
+      } else {
+        setHistoryData(BUILT_IN_HISTORY[type]);
+        setIsOffline(true);
+      }
+      if (cached?.jackpots) {
+        setJackpots({
+          lotto649: cached.jackpots.lotto649,
+          superlotto: cached.jackpots.superlotto,
+          daily539: cached.jackpots.daily539,
+        });
+      }
     }
     if (markChecked) setChecked(true);
   };
@@ -975,7 +1065,7 @@ function App() {
             <div className="countdown-eyebrow"><Timer size={14} /> NEXT DRAW</div>
             <div className="countdown-lottery-name">{config.label}</div>
             <div className="countdown-date">下期開獎：{nextDraw.drawDateLabel} {nextDraw.drawTimeLabel}</div>
-            <div className="countdown-jackpot">預估頭獎 <strong>{ESTIMATED_JACKPOT[lotteryType]}</strong></div>
+            <div className="countdown-jackpot">預估頭獎 <strong>{computeJackpotLabel(lotteryType, jackpots[lotteryType], historyData)}</strong></div>
           </div>
           <div className="countdown-right">
             {nextDraw.isToday ? (
