@@ -936,12 +936,14 @@ function App() {
     <div className="app-shell min-h-screen text-stone-100">
       <div className="marquee-bar">
         <button className="marquee-report-btn" onClick={() => setReportModalOpen(true)}><MessageCircle size={14} /> 我要報喜</button>
-        <div className="marquee-track" onMouseEnter={(e) => e.currentTarget.style.animationPlayState = 'paused'} onMouseLeave={(e) => e.currentTarget.style.animationPlayState = 'running'}>
-          {[...winMessages, ...winMessages].map((msg, idx) => (
-            <span className="marquee-item" key={`${msg.id}-${idx}`}>
-              {gameIcons[msg.game] ?? '🎉'}【{msg.game}】恭喜！{msg.nickname} {msg.message}
-            </span>
-          ))}
+        <div className="marquee-track">
+          <div className="marquee-content">
+            {[...winMessages, ...winMessages].map((msg, idx) => (
+              <span className="marquee-item" key={`${msg.id}-${idx}`}>
+                {gameIcons[msg.game] ?? '🎉'}【{msg.game}】恭喜！{msg.nickname} {msg.message}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
       <header className="topbar">
