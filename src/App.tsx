@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Award, Check, ChevronDown, Coffee, Coins, Copy, Download, Flame, History, Heart, RefreshCw, Sparkles, Target, Timer, Trash2, Trophy, X, Zap } from 'lucide-react';
+import { Award, Check, ChevronDown, Coffee, Coins, Copy, Download, Flame, HelpCircle, History, Heart, MessageCircle, RefreshCw, Shield, Sparkles, Target, Timer, Trash2, Trophy, X, Zap } from 'lucide-react';
 import LotteryStats from '@/components/LotteryStats';
 
 type Ratio = string;
@@ -224,6 +224,41 @@ const strategyOptions: { id: Strategy; icon: string; label: string; description:
 ];
 const strategyLabel: Record<Strategy, string> = { hot: '熱門高頻', cold: '冷門回補', golden: '黃金比例', random: '純條件隨機' };
 const pad = (number: number) => number.toString().padStart(2, '0');
+
+type WinMessage = {
+  id: string;
+  nickname: string;
+  game: string;
+  message: string;
+  createdAt: number;
+};
+
+const MARQUEE_KEY = 'hao-yun-xuan-hao-marquee';
+
+const defaultMarqueeMessages: WinMessage[] = [
+  { id: 'default-1', nickname: '新北陳小姐', game: '大樂透', message: '幸運對中 4 碼！', createdAt: 0 },
+  { id: 'default-2', nickname: '台北張先生', game: '今彩539', message: '對中 3 碼，好運持續發酵！', createdAt: 0 },
+  { id: 'default-3', nickname: '匿名幸運兒', game: '威力彩', message: '真的有準！感謝 80 歲少女指點！', createdAt: 0 },
+  { id: 'default-4', nickname: '台中李先生', game: '大樂透', message: '命中彩號，今晚便當加雞腿！', createdAt: 0 },
+];
+
+const gameIcons: Record<string, string> = { '大樂透': '🎉', '威力彩': '✨', '今彩539': '💰' };
+
+function loadMarqueeMessages(): WinMessage[] {
+  try {
+    const raw = localStorage.getItem(MARQUEE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed as WinMessage[];
+  } catch { /* ignore */ }
+  return [];
+}
+
+function saveMarqueeMessages(messages: WinMessage[]) {
+  try {
+    localStorage.setItem(MARQUEE_KEY, JSON.stringify(messages));
+  } catch { /* ignore */ }
+}
 
 const RECORDS_KEY = 'hao-yun-xuan-hao-records';
 const RECORDS_LIMIT = 200;
@@ -599,6 +634,13 @@ function App() {
   const [autoExcludeRecent, setAutoExcludeRecent] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [coffeeModalOpen, setCoffeeModalOpen] = useState(false);
+  const [winMessages, setWinMessages] = useState<WinMessage[]>(defaultMarqueeMessages);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportNickname, setReportNickname] = useState('');
+  const [reportGame, setReportGame] = useState<string>('大樂透');
+  const [reportMessage, setReportMessage] = useState('');
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
+  const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(0);
 
   const refreshHistory = async (type: LotteryType, markChecked: boolean) => {
     const latest = await fetchHistoryByType(type);
@@ -611,6 +653,8 @@ function App() {
 
   useEffect(() => {
     setRecords(loadRecords());
+    const saved = loadMarqueeMessages();
+    if (saved.length > 0) setWinMessages(saved);
     const tick = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(tick);
   }, []);
@@ -851,6 +895,27 @@ function App() {
 
   const handleApplyHot = () => applyHotNumbers(hotTopNumbers);
 
+  const submitReport = () => {
+    const trimmedNick = reportNickname.trim();
+    const trimmedMsg = reportMessage.trim();
+    if (!trimmedNick || !trimmedMsg) return;
+    const newMessage: WinMessage = {
+      id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      nickname: trimmedNick,
+      game: reportGame,
+      message: trimmedMsg,
+      createdAt: Date.now(),
+    };
+    setWinMessages((current) => {
+      const updated = [newMessage, ...current].slice(0, 30);
+      saveMarqueeMessages(updated);
+      return updated;
+    });
+    setReportNickname('');
+    setReportMessage('');
+    setReportModalOpen(false);
+  };
+
   const visibleHistory = showAll ? historyData : historyData.slice(0, 8);
   const resultSum = result.reduce((total, number) => total + number, 0);
   const resultOdd = result.filter((number) => number % 2 === 1).length;
@@ -869,6 +934,16 @@ function App() {
 
   return (
     <div className="app-shell min-h-screen text-stone-100">
+      <div className="marquee-bar">
+        <div className="marquee-track" onMouseEnter={(e) => e.currentTarget.style.animationPlayState = 'paused'} onMouseLeave={(e) => e.currentTarget.style.animationPlayState = 'running'}>
+          {[...winMessages, ...winMessages].map((msg, idx) => (
+            <span className="marquee-item" key={`${msg.id}-${idx}`}>
+              {gameIcons[msg.game] ?? '🎉'}【{msg.game}】{msg.nickname} {msg.message}
+            </span>
+          ))}
+        </div>
+        <button className="marquee-report-btn" onClick={() => setReportModalOpen(true)}><MessageCircle size={14} /> 我要報喜</button>
+      </div>
       <header className="topbar">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-4 lg:px-10">
           <div className="flex items-center gap-3">
@@ -966,6 +1041,33 @@ function App() {
         </div>
 
         <LotteryStats historyData={historyData} config={config} currentNumbers={result} />
+
+        <section className="content-section panel-frame rounded-2xl p-6 sm:p-8">
+          <div className="content-heading"><Sparkles size={20} className="content-heading-icon" /><h2>80歲少女好運選號機制說明</h2></div>
+          <div className="content-body">
+            <p>本工具提供大樂透、威力彩、今彩539 三種遊戲的智慧選號功能。選號機制結合「冷熱門號碼過濾」與「黃金分佈演算法」，協助使用者從歷史開獎數據中尋找可能的趨勢。所謂熱門號碼，是指近期開獎中出現頻率較高的號碼，適合偏好追蹤趨勢的使用者；冷門號碼則是長期未開出的號碼，部分使用者認為這些號碼有「回補」的可能。</p>
+            <p>黃金分佈演算法會同時考量號碼的奇偶比、和值區間與連號上限，透過平衡分佈來提升號碼組合的均衡性。使用者可自行調整和值範圍、奇偶比例與連號上限，系統會在符合條件的候選號碼池中隨機生成組合。需要特別說明的是，所有彩券開獎皆為獨立隨機事件，過往開獎紀錄不代表未來結果，本工具的選號結果僅供娛樂參考，不構成任何中獎保證。請理性投注，量力而為。</p>
+          </div>
+        </section>
+
+        <section className="content-section panel-frame rounded-2xl p-6 sm:p-8">
+          <div className="content-heading"><HelpCircle size={20} className="content-heading-icon" /><h2>常見問題 FAQ</h2></div>
+          <div className="faq-list">
+            {[
+              { q: '選號結果會保證中獎嗎？', a: '不會。所有彩券開獎皆為獨立隨機事件，本工具的選號結果僅供娛樂參考，不構成任何中獎保證。請保持平常心，理性投注，量力而為。' },
+              { q: '電腦選號與自選號碼有何不同？', a: '電腦選號（本工具的「生成選號」）是依據您設定的條件，從候選號碼池中隨機組合；自選號碼則是由您自行挑選號碼。兩者的中獎機率在數學上完全相同，差別僅在於選擇方式與個人偏好。' },
+              { q: '開獎時間為何？', a: '大樂透每週二、五晚間 20:30 開獎；威力彩每週一、四晚間 20:30 開獎；今彩539則為每週一至週六晚間 20:30 開獎。您可在頁面上方的倒數計時器查看下一期開獎時間。' },
+            ].map((item, index) => (
+              <div className={`faq-item ${faqOpenIndex === index ? 'open' : ''}`} key={index}>
+                <button className="faq-question" onClick={() => setFaqOpenIndex(faqOpenIndex === index ? null : index)}>
+                  <span>{item.q}</span>
+                  <ChevronDown size={18} className={`faq-chevron ${faqOpenIndex === index ? 'rotate-180' : ''}`} />
+                </button>
+                <div className="faq-answer"><p>{item.a}</p></div>
+              </div>
+            ))}
+          </div>
+        </section>
           </>
         ) : (
           <section className="records-page">
@@ -1024,7 +1126,13 @@ function App() {
           </section>
         )}
       </main>
-      <footer><span>© 2026 80歲少女之好運選號</span><span>理性投注．量力而為</span></footer>
+      <footer className="enhanced-footer">
+        <div className="footer-main">
+          <span>© 2026 80歲少女之好運選號 All Rights Reserved.</span>
+          <button className="privacy-link" onClick={() => setPrivacyModalOpen(true)}><Shield size={13} /> 隱私權政策 (Privacy Policy)</button>
+        </div>
+        <span className="footer-sub">理性投注．量力而為</span>
+      </footer>
 
       <button className="coffee-fab" onClick={() => setCoffeeModalOpen(true)} aria-label="請喝咖啡"><Coffee size={26} /></button>
 
@@ -1039,6 +1147,39 @@ function App() {
               <Heart size={18} /> 前往贊助一杯咖啡
             </a>
             <span className="coffee-modal-hint">點擊後將於新分頁開啟贊助頁面</span>
+          </div>
+        </div>
+      )}
+
+      {reportModalOpen && (
+        <div className="coffee-overlay" onClick={() => setReportModalOpen(false)}>
+          <div className="report-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="coffee-modal-close" onClick={() => setReportModalOpen(false)}><X size={20} /></button>
+            <div className="report-modal-header"><MessageCircle size={32} className="report-modal-icon" /><h3>🎉 我要報喜</h3></div>
+            <p className="report-modal-sub">分享你的好運喜訊，讓大家沾沾福氣！</p>
+            <div className="report-form">
+              <label className="report-field"><span>暱稱</span><input type="text" value={reportNickname} onChange={(e) => setReportNickname(e.target.value)} placeholder="如：板橋林小姐" maxLength={12} /></label>
+              <label className="report-field"><span>中獎遊戲</span><select value={reportGame} onChange={(e) => setReportGame(e.target.value)}><option>大樂透</option><option>威力彩</option><option>今彩539</option></select></label>
+              <label className="report-field"><span>好運感言</span><input type="text" value={reportMessage} onChange={(e) => setReportMessage(e.target.value)} placeholder="如：中四星太酷啦！" maxLength={30} /></label>
+              <button className="report-submit" onClick={submitReport} disabled={!reportNickname.trim() || !reportMessage.trim()}><Sparkles size={16} /> 送出報喜</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {privacyModalOpen && (
+        <div className="coffee-overlay" onClick={() => setPrivacyModalOpen(false)}>
+          <div className="privacy-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="coffee-modal-close" onClick={() => setPrivacyModalOpen(false)}><X size={20} /></button>
+            <div className="report-modal-header"><Shield size={32} className="report-modal-icon" /><h3>隱私權政策</h3></div>
+            <div className="privacy-body">
+              <p><strong>Cookie 使用說明</strong></p>
+              <p>本網站使用 localStorage 儲存您的選號記錄與報喜留言，資料僅保存在您的瀏覽器中，不會上傳至伺服器。清除瀏覽器資料即可移除所有儲存內容。</p>
+              <p><strong>廣告免責聲明</strong></p>
+              <p>本網站包含 Google AdSense 廣告。Google 及其合作夥伴可能使用 Cookie 來提供廣告服務並根據您的瀏覽行為投放相關廣告。您可以至 Google 廣告設定頁面管理廣告個人化偏好。</p>
+              <p><strong>免責聲明</strong></p>
+              <p>本網站提供的選號結果僅供娛樂參考，不構成任何投資建議或中獎保證。彩券開獎為隨機事件，請理性投注、量力而為。如需協助，請撥打臺灣彩券客服專線。</p>
+            </div>
           </div>
         </div>
       )}
