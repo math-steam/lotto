@@ -939,7 +939,7 @@ function App() {
         <div className="marquee-track" onMouseEnter={(e) => e.currentTarget.style.animationPlayState = 'paused'} onMouseLeave={(e) => e.currentTarget.style.animationPlayState = 'running'}>
           {[...winMessages, ...winMessages].map((msg, idx) => (
             <span className="marquee-item" key={`${msg.id}-${idx}`}>
-              {gameIcons[msg.game] ?? '🎉'}【{msg.game}】恭喜 {msg.nickname} {msg.message}
+              {gameIcons[msg.game] ?? '🎉'}【{msg.game}】恭喜！{msg.nickname} {msg.message}
             </span>
           ))}
         </div>
