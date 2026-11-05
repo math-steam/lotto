@@ -935,6 +935,7 @@ function App() {
   return (
     <div className="app-shell min-h-screen text-stone-100">
       <div className="marquee-bar">
+        <button className="marquee-report-btn" onClick={() => setReportModalOpen(true)}><MessageCircle size={14} /> 我要報喜</button>
         <div className="marquee-track" onMouseEnter={(e) => e.currentTarget.style.animationPlayState = 'paused'} onMouseLeave={(e) => e.currentTarget.style.animationPlayState = 'running'}>
           {[...winMessages, ...winMessages].map((msg, idx) => (
             <span className="marquee-item" key={`${msg.id}-${idx}`}>
@@ -942,7 +943,6 @@ function App() {
             </span>
           ))}
         </div>
-        <button className="marquee-report-btn" onClick={() => setReportModalOpen(true)}><MessageCircle size={14} /> 我要報喜</button>
       </div>
       <header className="topbar">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-4 lg:px-10">
