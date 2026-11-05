@@ -459,8 +459,8 @@ function sortAndLimitDraws(draws: Draw[], limit: number): Draw[] {
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 const FALLBACK_JACKPOT_LABEL: Record<LotteryType, string> = {
-  lotto649: 'NT$ 1.0 億起',
-  superlotto: 'NT$ 2.0 億起',
+  lotto649: 'NT$ 1.2 億',
+  superlotto: 'NT$ 2.6 億',
   daily539: 'NT$ 800 萬',
 };
 

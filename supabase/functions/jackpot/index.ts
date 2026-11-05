@@ -4,20 +4,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+type JackpotEntry = {
+  amount: string;
+  period: string | null;
+};
+
 type JackpotData = {
-  lotto649: { amount: string; period: string | null };
-  superlotto: { amount: string; period: string | null };
-  daily539: { amount: string; period: string | null };
+  lotto649: JackpotEntry;
+  superlotto: JackpotEntry;
+  daily539: JackpotEntry;
 };
 
 const FETCH_TIMEOUT_MS = 12000;
 
 const PROXIES: ((u: string) => string)[] = [
+  (u) => u,
   (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
   (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
   (u) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`,
-  (u) => u,
 ];
+
+const HARDCODED_FALLBACK: JackpotData = {
+  superlotto: { amount: "NT$ 2.6 億", period: null },
+  lotto649: { amount: "NT$ 1.2 億", period: null },
+  daily539: { amount: "NT$ 800 萬", period: null },
+};
 
 async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   const controller = new AbortController();
@@ -32,7 +43,7 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   }
 }
 
-async function fetchJsonViaProxies(targetUrl: string): Promise<Record<string, unknown> | null> {
+async function fetchJsonViaProxies(targetUrl: string): Promise<unknown | null> {
   for (const wrap of PROXIES) {
     try {
       const response = await fetchWithTimeout(wrap(targetUrl), FETCH_TIMEOUT_MS);
@@ -41,8 +52,8 @@ async function fetchJsonViaProxies(targetUrl: string): Promise<Record<string, un
         continue;
       }
       const payload = await response.json();
-      if (payload && typeof payload === "object") {
-        return payload as Record<string, unknown>;
+      if (payload !== null && payload !== undefined) {
+        return payload;
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -50,81 +61,6 @@ async function fetchJsonViaProxies(targetUrl: string): Promise<Record<string, un
     }
   }
   return null;
-}
-
-function formatAmount(yi: number): string {
-  if (yi >= 1) return `NT$ ${yi.toFixed(1)} 億`;
-  return `NT$ ${Math.round(yi * 10000)} 萬`;
-}
-
-function estimateFromSchedule(now: Date, type: string): { amount: string; period: string | null } {
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const weekday = now.getDay();
-  const hour = now.getHours();
-
-  if (type === "superlotto") {
-    const drawDays = [1, 4];
-    const afterDraw = hour >= 20 && drawDays.includes(weekday);
-    const base = 2.0;
-    let extra = 0;
-    if (!afterDraw) {
-      const daysSinceLastDraw = drawDays.includes(weekday) && hour < 20 ? 0 : (() => {
-        let count = 0;
-        const d = new Date(now);
-        d.setHours(0, 0, 0, 0);
-        for (let i = 1; i <= 7; i++) {
-          const check = new Date(d);
-          check.setDate(check.getDate() - i);
-          if (drawDays.includes(check.getDay())) {
-            count = i;
-            break;
-          }
-        }
-        return count;
-      })();
-      extra = daysSinceLastDraw * 0.15;
-    }
-    return { amount: formatAmount(base + extra), period: null };
-  }
-  if (type === "lotto649") {
-    const base = 1.0;
-    return { amount: formatAmount(base), period: null };
-  }
-  return { amount: "NT$ 800 萬", period: null };
-}
-
-function parseArcLightData(data: Record<string, unknown>): JackpotData | null {
-  const result: JackpotData = {
-    lotto649: { amount: "", period: null },
-    superlotto: { amount: "", period: null },
-    daily539: { amount: "", period: null },
-  };
-
-  const games: { key: string; type: keyof JackpotData }[] = [
-    { key: "威力彩", type: "superlotto" },
-    { key: "大樂透", type: "lotto649" },
-    { key: "今彩539", type: "daily539" },
-  ];
-
-  let foundAny = false;
-  for (const game of games) {
-    const items = data[game.key];
-    if (!Array.isArray(items) || items.length === 0) continue;
-    const latest = items[0] as Record<string, unknown>;
-    const prizeStr = latest["prize"] ?? latest["jackpot"] ?? latest["amount"] ?? latest["estimatedPrize"];
-    const period = latest["period"] ?? latest["issue"] ?? null;
-    if (typeof prizeStr === "string" || typeof prizeStr === "number") {
-      const parsed = parsePrizeValue(prizeStr);
-      if (parsed) {
-        result[game.type] = { amount: parsed, period: typeof period === "string" ? period : null };
-        foundAny = true;
-      }
-    }
-  }
-
-  return foundAny ? result : null;
 }
 
 function parsePrizeValue(value: string | number): string | null {
@@ -147,38 +83,103 @@ function parsePrizeValue(value: string | number): string | null {
   return null;
 }
 
+const GAME_NAME_MAP: Record<string, keyof JackpotData> = {
+  "威力彩": "superlotto",
+  "superlotto": "superlotto",
+  "SuperLotto638": "superlotto",
+  "大樂透": "lotto649",
+  "lotto649": "lotto649",
+  "Lotto649": "lotto649",
+  "今彩539": "daily539",
+  "daily539": "daily539",
+  "Daily539": "daily539",
+};
+
+function findGameKey(rawKey: string): keyof JackpotData | null {
+  const lower = rawKey.toLowerCase();
+  for (const [name, type] of Object.entries(GAME_NAME_MAP)) {
+    if (rawKey === name || lower === name.toLowerCase()) return type;
+  }
+  for (const [name, type] of Object.entries(GAME_NAME_MAP)) {
+    if (rawKey.includes(name) || lower.includes(name.toLowerCase())) return type;
+  }
+  return null;
+}
+
+function parseTimetableData(payload: unknown): JackpotData | null {
+  if (!payload || typeof payload !== "object") return null;
+
+  const result: JackpotData = {
+    lotto649: { amount: "", period: null },
+    superlotto: { amount: "", period: null },
+    daily539: { amount: "", period: null },
+  };
+
+  let foundAny = false;
+
+  const candidates: Record<string, unknown>[] = [];
+  if (Array.isArray(payload)) {
+    candidates.push(...(payload as Record<string, unknown>[]));
+  } else {
+    const obj = payload as Record<string, unknown>;
+    for (const value of Object.values(obj)) {
+      if (Array.isArray(value)) {
+        candidates.push(...(value as Record<string, unknown>[]));
+      } else if (value && typeof value === "object") {
+        candidates.push(value as Record<string, unknown>);
+      }
+    }
+  }
+
+  for (const item of candidates) {
+    const gameName = item["game"] ?? item["gameName"] ?? item["lottery"] ?? item["lotteryName"] ?? item["name"] ?? item["type"];
+    if (typeof gameName !== "string") continue;
+    const gameType = findGameKey(gameName);
+    if (!gameType) continue;
+    if (result[gameType].amount) continue;
+
+    const prizeFields = ["estimatedPrize", "prize", "jackpot", "jackpotAmount", "prizeAmount", "estimatedPrizeAmount", "headPrize", "firstPrize", "amount"];
+    for (const field of prizeFields) {
+      const raw = item[field];
+      if (raw === undefined || raw === null) continue;
+      const parsed = parsePrizeValue(raw as string | number);
+      if (parsed) {
+        const period = item["period"] ?? item["issue"] ?? item["drawNo"] ?? item["drawNumber"];
+        result[gameType] = { amount: parsed, period: typeof period === "string" ? period : null };
+        foundAny = true;
+        break;
+      }
+    }
+  }
+
+  return foundAny ? result : null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const now = new Date();
-    const fallback: JackpotData = {
-      lotto649: estimateFromSchedule(now, "lotto649"),
-      superlotto: estimateFromSchedule(now, "superlotto"),
-      daily539: estimateFromSchedule(now, "daily539"),
-    };
+    const targetUrl = "https://lottery.timetable.tw/api/draws?latestEach=true";
+    const payload = await fetchJsonViaProxies(targetUrl);
 
-    const targetUrl = "https://lotto.arclight.tw/api/data";
-    const data = await fetchJsonViaProxies(targetUrl);
+    let result: JackpotData = HARDCODED_FALLBACK;
 
-    let result: JackpotData = fallback;
-
-    if (data) {
-      const parsed = parseArcLightData(data);
+    if (payload) {
+      const parsed = parseTimetableData(payload);
       if (parsed) {
         result = {
-          lotto649: parsed.lotto649.amount ? parsed.lotto649 : fallback.lotto649,
-          superlotto: parsed.superlotto.amount ? parsed.superlotto : fallback.superlotto,
-          daily539: parsed.daily539.amount ? parsed.daily539 : fallback.daily539,
+          lotto649: parsed.lotto649.amount ? parsed.lotto649 : HARDCODED_FALLBACK.lotto649,
+          superlotto: parsed.superlotto.amount ? parsed.superlotto : HARDCODED_FALLBACK.superlotto,
+          daily539: parsed.daily539.amount ? parsed.daily539 : HARDCODED_FALLBACK.daily539,
         };
-        console.log("[jackpot] Successfully fetched from arclight API");
+        console.log("[jackpot] Successfully fetched from lottery.timetable.tw");
       } else {
-        console.warn("[jackpot] arclight API returned data but no jackpots parsed, using schedule estimate");
+        console.warn("[jackpot] timetable API returned data but no jackpots parsed, using hardcoded fallback");
       }
     } else {
-      console.warn("[jackpot] All proxies failed, using schedule-based estimate");
+      console.warn("[jackpot] All proxies failed, using hardcoded fallback");
     }
 
     return new Response(
@@ -188,14 +189,8 @@ Deno.serve(async (req: Request) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[jackpot] Unhandled error:", msg);
-    const now = new Date();
-    const fallback: JackpotData = {
-      lotto649: estimateFromSchedule(now, "lotto649"),
-      superlotto: estimateFromSchedule(now, "superlotto"),
-      daily539: estimateFromSchedule(now, "daily539"),
-    };
     return new Response(
-      JSON.stringify({ ...fallback, timestamp: Date.now(), error: msg }),
+      JSON.stringify({ ...HARDCODED_FALLBACK, timestamp: Date.now(), error: msg }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

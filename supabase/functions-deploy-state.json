@@ -1,13 +1,13 @@
 {
   "projectId": "72449455",
   "functions": {
+    "jackpot": {
+      "hasChanged": false,
+      "hash": "50b3622a71873daa8e837798fae61d02a558894fcbd3d67300182a17a0d845e2"
+    },
     "lottery-results": {
       "hasChanged": false,
       "hash": "25bf1dae67f0dbd83dd022a59b8bfcfff9acef14639fb2d8e10062f80ac09035"
-    },
-    "jackpot": {
-      "hasChanged": false,
-      "hash": "22e5334dc2c91d407a0acf934c030676c9a26d123c9d76094557c3158088b75e"
     }
   }
 }
