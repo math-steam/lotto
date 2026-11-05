@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Award, Check, ChevronDown, Coffee, Coins, Copy, Download, Flame, HelpCircle, History, Heart, MessageCircle, RefreshCw, Shield, Sparkles, Target, Timer, Trash2, Trophy, X, Zap } from 'lucide-react';
+import { Award, Check, ChevronDown, Coffee, Coins, Copy, Download, Flame, HelpCircle, History, Heart, MessageCircle, RefreshCw, Shield, Sparkles, Target, Timer, Trash2, X, Zap } from 'lucide-react';
 import LotteryStats from '@/components/LotteryStats';
 
 type Ratio = string;
@@ -1031,11 +1031,9 @@ function App() {
                 <span>和值 <strong>{resultSum}</strong></span>
                 <span>奇偶 <strong>{resultOdd} : {resultEven}</strong></span>
                 {config.hasSecondArea && <span>第二區 <strong>{pad(resultSecond)}</strong></span>}
-                <span className="meta-good"><Trophy size={14} /> 條件符合</span>
               </div>
-              <div className="recommendation"><Sparkles size={15} /><span><b>推薦理由</b>{recommendation}</span></div>
+              <div className="recommendation"><Sparkles size={15} /><span>推薦理由：符合設定條件（和值 {resultSum} / 奇偶比 {resultOdd}:{resultEven} / {recommendation}）</span></div>
             </div>
-            <div className="tip-card"><Sparkles size={18} /><p>小提醒：號碼組合僅供娛樂參考，保持平常心，享受選號的樂趣！</p></div>
             <button className="coffee-btn" onClick={() => setCoffeeModalOpen(true)}><Coffee size={20} /> 請 80 歲少女喝杯咖啡 ☕（好運加持）</button>
           </section>
 
