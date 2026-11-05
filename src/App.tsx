@@ -624,7 +624,7 @@ function App() {
   const [strategy, setStrategy] = useState<Strategy>('random');
   const [result, setResult] = useState<number[]>([5, 12, 23, 31, 38, 44]);
   const [resultSecond, setResultSecond] = useState<number>(1);
-  const [recommendation, setRecommendation] = useState('包含 3 個熱門號、奇偶比 3:3');
+  const [recommendation, setRecommendation] = useState('包含 3 個熱門號');
   const [copied, setCopied] = useState(false);
   const [checking, setChecking] = useState(false);
   const [checked, setChecked] = useState(false);
@@ -677,7 +677,7 @@ function App() {
     setMaxStreak(2);
     setResult(Array.from({ length: next.mainCount }, (_, index) => index + 1));
     setResultSecond(1);
-    setRecommendation('點擊「生成選號」開始挑選幸運組合');
+    setRecommendation('尚未生成，點擊「生成選號」開始挑選幸運組合');
     setChecked(false);
     setShowAll(false);
     setHistoryData(BUILT_IN_HISTORY[type]);
@@ -727,10 +727,10 @@ function App() {
     const hotCount = selected.filter((number) => (frequency.get(number) ?? 0) >= 3).length;
     const coldCount = selected.filter((number) => (lastSeen.get(number) ?? historyData.length) >= Math.max(5, historyData.length - 4)).length;
     const evenCount = config.mainCount - oddTarget;
-    if (strategy === 'hot') setRecommendation(`包含 ${hotCount} 個熱門號、奇偶比 ${oddTarget}:${evenCount}`);
+    if (strategy === 'hot') setRecommendation(`包含 ${hotCount} 個熱門號`);
     else if (strategy === 'cold') setRecommendation(`包含 ${coldCount} 個冷門回補號、已避開 ${blockedNumbers.size} 個排除號`);
-    else if (strategy === 'golden') setRecommendation(`黃金和值 ${selected.reduce((total, number) => total + number, 0)}、奇偶比 ${oddTarget}:${evenCount}`);
-    else setRecommendation(`符合全部篩選條件、奇偶比 ${oddTarget}:${evenCount}`);
+    else if (strategy === 'golden') setRecommendation(`黃金和值分佈`);
+    else setRecommendation(`符合全部篩選條件`);
 
     const sumValue = selected.reduce((total, number) => total + number, 0);
     const oddCount = selected.filter((number) => number % 2 === 1).length;
@@ -878,7 +878,7 @@ function App() {
         })[0];
       setResultSecond(hotSecond ?? 1);
     }
-    setRecommendation(`已帶入近 30 期最熱門的 ${numbers.length} 個號碼，可點擊「生成選號」重新組合`);
+    setRecommendation(`已帶入近 30 期最熱門的 ${numbers.length} 個號碼`);
   };
 
   const hotTopNumbers = useMemo(() => {
@@ -1027,12 +1027,7 @@ function App() {
                 {result.map((number) => <span className="lotto-ball" key={number}>{pad(number)}</span>)}
                 {config.hasSecondArea && <span className="lotto-ball second-ball" key={resultSecond}>{pad(resultSecond)}</span>}
               </div>
-              <div className="result-meta">
-                <span>和值 <strong>{resultSum}</strong></span>
-                <span>奇偶 <strong>{resultOdd} : {resultEven}</strong></span>
-                {config.hasSecondArea && <span>第二區 <strong>{pad(resultSecond)}</strong></span>}
-              </div>
-              <div className="recommendation"><Sparkles size={15} /><span>推薦理由：符合設定條件（和值 {resultSum} / 奇偶比 {resultOdd}:{resultEven} / {recommendation}）</span></div>
+              <div className="recommendation"><Sparkles size={15} /><span>推薦理由：符合自訂條件（和值 {resultSum}｜奇偶比 {resultOdd}:{resultEven}｜{recommendation}）</span></div>
             </div>
             <button className="coffee-btn" onClick={() => setCoffeeModalOpen(true)}><Coffee size={20} /> 請 80 歲少女喝杯咖啡 ☕（好運加持）</button>
           </section>
