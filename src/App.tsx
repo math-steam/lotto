@@ -721,15 +721,26 @@ function App() {
   const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(0);
   const [jackpotData, setJackpotData] = useState<JackpotApiResponse | null>(() => loadJackpotCache());
+  const [toast, setToast] = useState<string | null>(null);
 
-  const refreshHistory = async (type: LotteryType, markChecked: boolean) => {
+  const showToast = (msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 3500);
+  };
+
+  const refreshHistory = async (type: LotteryType, markChecked: boolean): Promise<boolean> => {
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      window.setTimeout(() => reject(new Error('timeout')), 5000),
+    );
     try {
-      const latest = await fetchLatestLottery();
+      const latest = await Promise.race([fetchLatestLottery(), timeoutPromise]);
       saveLotteryCache(latest);
       if (latest[type].length > 0) {
         setHistoryData(latest[type]);
         setIsOffline(false);
       }
+      if (markChecked) setChecked(true);
+      return true;
     } catch {
       const cached = loadLotteryCache();
       if (cached && cached[type].length > 0) {
@@ -739,8 +750,9 @@ function App() {
         setHistoryData(BUILT_IN_HISTORY[type]);
         setIsOffline(true);
       }
+      if (markChecked) setChecked(true);
+      return false;
     }
-    if (markChecked) setChecked(true);
   };
 
   const refreshJackpot = async () => {
@@ -867,8 +879,9 @@ function App() {
   const checkLatest = async () => {
     setChecking(true);
     setChecked(false);
-    await refreshHistory(lotteryType, true);
+    const success = await refreshHistory(lotteryType, true);
     setChecking(false);
+    showToast(success ? '已更新至最新開獎號碼！' : '目前官方資料連線忙碌中，已顯示最新快取紀錄！');
   };
 
   const toggleExcluded = (number: number) => {
@@ -1233,6 +1246,8 @@ function App() {
       </footer>
 
       <button className="coffee-fab" onClick={() => setCoffeeModalOpen(true)} aria-label="請喝咖啡"><Coffee size={26} /></button>
+
+      {toast && <div className="toast-notification">{toast}</div>}
 
       {coffeeModalOpen && (
         <div className="coffee-overlay" onClick={() => setCoffeeModalOpen(false)}>

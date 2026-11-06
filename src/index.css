@@ -372,3 +372,8 @@ button { cursor: pointer; }
 .privacy-link { display:flex; align-items:center; gap:5px; border:none; background:transparent; color:#c9977a; font-size:12px; font-weight:700; cursor:pointer; transition:.2s; }
 .privacy-link:hover { color:#ffe6a1; }
 @media (max-width: 720px) { .enhanced-footer { padding:20px 16px; } .footer-main { gap:10px; } }
+
+/* Toast Notification */
+.toast-notification { position:fixed; bottom:88px; left:50%; transform:translateX(-50%); z-index:200; padding:14px 28px; border-radius:14px; color:#4a1208; background:linear-gradient(135deg,#ffe49a,#f0c466); box-shadow:0 8px 30px rgba(226,165,66,.45); font-size:15px; font-weight:800; letter-spacing:.03em; white-space:nowrap; animation:toast-in .3s cubic-bezier(.34,1.56,.64,1); }
+@keyframes toast-in { 0% { opacity:0; transform:translateX(-50%) translateY(16px); } 100% { opacity:1; transform:translateX(-50%) translateY(0); } }
+@media (max-width: 720px) { .toast-notification { bottom:80px; font-size:13px; padding:12px 20px; } }
